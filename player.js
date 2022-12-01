@@ -4,7 +4,7 @@ export class Player {
     constructor(grid, pos) {
         this.pos = pos
         this.grid = grid
-        this.moveTime = 40
+        this.moveTime = 50
         this.t = 0
         this.target = pos
         this.position = this.pos
@@ -15,18 +15,22 @@ export class Player {
             switch(e.code)
             {
                 case 'ArrowUp':
+                case 'KeyW':
                     p = vec2.add(this.pos, new vec2(0, -1))
                     if(!this.grid.checkFlag(p, 1)) this.target = p
                     break;
                 case 'ArrowDown':
+                case 'KeyS':
                     p = vec2.add(this.pos, new vec2(0, 1))
                     if(!this.grid.checkFlag(p, 1)) this.target = p
                     break;
                 case 'ArrowLeft':
+                case 'KeyA':
                     p = vec2.add(this.pos, new vec2(-1, 0))
                     if(!this.grid.checkFlag(p, 1)) this.target = p
                     break;
                 case 'ArrowRight':
+                case 'KeyD':
                     p = vec2.add(this.pos, new vec2(1, 0))
                     if(!this.grid.checkFlag(p, 1)) this.target = p
                     break;

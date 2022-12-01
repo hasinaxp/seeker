@@ -13,12 +13,14 @@ document.body.appendChild(canvas)
 
 canvas.width = innerWidth
 canvas.height = innerHeight
-const cols = 100
+let cols = 64
 let aspect = canvas.width / canvas.height
+if(aspect < 1)
+    cols = 48
 let rows = Math.floor(cols / aspect)
 let dx = Math.floor(canvas.width / cols)
 let dy = Math.floor(canvas.height / rows)
-let offset = new vec2(rows/2, cols/2)
+let offset = new vec2(rows/4, cols/4)
 addEventListener('resize', e => {
     canvas.width = innerWidth
     canvas.height = innerHeight
@@ -48,7 +50,8 @@ let objectiveCount = 0
 
 function GenObjectives(mapSize = 500, density = 40)
 {
-    const successProb = 1 - density / 10000
+    const successProb = 1 - density / 6000
+    console.log({successProb})
     for(let y = -mapSize; y < mapSize; y++)
     for(let x = -mapSize; x < mapSize; x++)
     {
@@ -58,11 +61,18 @@ function GenObjectives(mapSize = 500, density = 40)
             let prob = Math.random()
             if(prob > successProb)
             {
-                worldGrid.set(pos, 4) // 4 for objective
-                objectiveCount++
-            }
+                worldGrid.set(pos, 4) // 4 for food objective
+                if(Math.random() > 0.8)
+                {
+                    worldGrid.set(pos, 8) // speed boost
 
+                }
+                else {
+                objectiveCount++
+                }
+            }
         }
+
     }
 }
 
@@ -78,6 +88,7 @@ function initLevel(lev)
     objectiveCount = 0
     GenObjectives(worldGridSize/2, lev * 2 + 10)
     player = new Player(worldGrid, startPosition)
+    player.moveTime = 50
     timer = Math.ceil(Math.sqrt(lev)) * 1000 * 30 + 5000
     currentTime = 0
 
@@ -109,6 +120,18 @@ function DrawGridPortion(pos, t)
             ctx.arc(xp, yp, 10 * Math.abs(Math.sin(t * 0.005)), 0, Math.PI * 2)
             ctx.fill()
             //ctx.fillRect(x * dx + Math.floor(off.x * dx), y * dy + Math.floor(off.y * dy), dx, dy)
+        }
+        if(v === 8)
+        {
+            ctx.strokeStyle = `hsl(${t/10 + 140}deg, 60%, 90%)`
+            ctx.lineWidth = 2
+            const xp = x * dx + Math.floor(off.x * dx) + dx /2
+            const yp = y * dy + Math.floor(off.y * dy) + dy /2
+            ctx.beginPath()
+            ctx.arc(xp, yp, 14 * Math.abs(Math.sin(t * 0.005)), 0, Math.PI * 2)
+            ctx.arc(xp, yp, 16 * Math.abs(Math.sin(t * 0.004 + .5)), 0, Math.PI * 2)
+            ctx.strokeRect(xp-dx/2, yp-dx/2, dx, dy)
+            ctx.stroke()
         }
     }
     return off
@@ -147,7 +170,7 @@ function render(t)
 
 
     ctx.fillStyle = '#fff'
-    ctx.font = '24px Helvetica'
+    ctx.font = 'lighter 24px helvetica'
     ctx.fillText(`score: ${playerScore}`, 30, 30)
     ctx.fillText(`objectives left: ${objectiveCount}`, 200, 30)
     ctx.fillText(`time left: ${Math.floor((timer- currentTime)/1000)}s`, 500, 30)
@@ -166,6 +189,7 @@ function loadAudio(src) {
 }
 
 let eatAudio = await loadAudio('./eatsound.wav')
+let gameoverAudio = await loadAudio('./gameover.wav')
 
 
 initLevel(currentLevel)
@@ -178,7 +202,7 @@ function simulation(t)
         dt = 0
     currentTime += dt
     elapsedTime = t
-    requestAnimationFrame(simulation)
+    let hdr = requestAnimationFrame(simulation)
     if(timer - currentTime > 0) {
 
         player.move(dt)
@@ -190,7 +214,7 @@ function simulation(t)
                 ctx.fillStyle = '#e00'
                 ctx.fillRect(0,0, canvas.width, canvas.height)
                 setTimeout(() => {
-                    ctx.fillStyle = '#e00'
+                    ctx.fillStyle = '#e46'
                     ctx.fillRect(0,0, canvas.width, canvas.height)
                 }, 100)
                 setTimeout(() => {
@@ -215,12 +239,35 @@ function simulation(t)
                 }, 50)
             }
         }
+        if(worldGrid.get(player.position) === 8)
+        {
+            worldGrid.set(player.position, 0)
+            if(player.moveTime > 10)
+                player.moveTime -= 15
+            
+            playerScore += 15
+            ctx.fillStyle = '#dde'
+            ctx.fillRect(0,0, canvas.width, canvas.height)
+            for(let l = 0; l < 400; l++)
+            setTimeout(() => {
+                ctx.fillStyle = '#fff'
+                ctx.fillRect(0,0, canvas.width, canvas.height)
+                ctx.fillStyle = `#4fff`
+                ctx.font = '80px helvetica'
+                ctx.fillText(`!Speed Boost!`, Math.floor(innerWidth/4), Math.floor(innerHeight/2)-Math.floor(l/4))
+                
+            }, l)
+            eatAudio.play()
+            
+        }
         render(t)
     }
     else {
         ctx.fillStyle = '#fff'
-    ctx.font = '40px Helvetica'
-    ctx.fillText(`game over!!!! your score: ${playerScore}`, Math.floor(innerWidth/2), Math.floor(innerHeight/2))
+    ctx.font = 'lighter 40px helvetica'
+    ctx.fillText(`game over!!!! your score: ${playerScore}`, Math.floor(innerWidth/4), Math.floor(innerHeight/2))
+    gameoverAudio.play()
+    cancelAnimationFrame(hdr)
     }
     document.title = `${Math.floor(1000/dt)}fps`
 }
